@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Live Weather Telemetry Dashboard - Real-time global meteorological analytics, atmospheric telemetry, and 5-day forecast powered by OpenWeatherMap API.">
+  <title>AeroPulse | Live Weather Telemetry Dashboard</title>
+
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- FontAwesome Icons for clean weather telemetry graphics -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="theme-sunny">
+
+  <!-- Ambient background glow effect -->
+  <div class="ambient-glow" aria-hidden="true"></div>
+
+  <div class="app-container">
+
+    <!-- Header Section -->
+    <header class="dashboard-header" role="banner">
+      <div class="brand-section">
+        <div class="brand-icon-wrapper" aria-hidden="true">
+          <i class="fas fa-bolt"></i>
+        </div>
+        <div>
+          <h1 class="brand-title">AeroPulse <span class="brand-badge">Telemetry</span></h1>
+          <p class="brand-tagline">Real-time Global Meteorological Intelligence</p>
+        </div>
+      </div>
+
+      <div class="header-status">
+        <div class="date-pill" id="current-date-pill">
+          <i class="far fa-calendar-alt" aria-hidden="true"></i>
+          <span id="current-date-display">Loading date...</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Search Section -->
+    <section class="search-container" aria-label="City Search">
+      <form class="search-form" id="search-form" role="search" novalidate>
+        <div class="search-input-wrapper">
+          <i class="fas fa-magnifying-glass search-icon-left" aria-hidden="true"></i>
+          <input 
+            type="text" 
+            id="search-input" 
+            class="search-input" 
+            placeholder="Search worldwide city (e.g. Mumbai, Tokyo, London, New York)..." 
+            autocomplete="off"
+            spellcheck="false"
+            required
+            aria-label="City name"
+          />
+          <button 
+            type="button" 
+            id="clear-input-btn" 
+            class="clear-btn hidden" 
+            aria-label="Clear input query" 
+            title="Clear"
+          >
+            <i class="fas fa-times" aria-hidden="true"></i>
+          </button>
+        </div>
+        <button type="submit" id="search-btn" class="search-submit-btn" aria-label="Retrieve weather">
+          <span>Search City</span>
+          <i class="fas fa-arrow-right" aria-hidden="true"></i>
+        </button>
+      </form>
+
+      <!-- Recent Searches Bar -->
+      <div class="recent-searches-section hidden" id="recent-searches-section" aria-label="Recently Searched Cities">
+        <div class="recent-searches-header">
+          <i class="fas fa-clock-rotate-left" aria-hidden="true"></i>
+          <span>Recent:</span>
+        </div>
+        <div class="recent-searches-list" id="recent-searches-list" role="list">
+          <!-- Dynamic city pills injected here -->
+        </div>
+        <button type="button" class="clear-history-btn" id="clear-history-btn" title="Clear search history">
+          <i class="fas fa-trash-can" aria-hidden="true"></i> Clear
+        </button>
+      </div>
+    </section>
+
+    <!-- API Key Notice Banner (Shown when API key is unconfigured) -->
+    <aside class="api-config-banner hidden" id="api-config-banner" role="alert">
+      <i class="fas fa-triangle-exclamation banner-icon" aria-hidden="true"></i>
+      <div class="banner-body">
+        <strong>Setup Required:</strong> OpenWeatherMap API key is currently placeholder.
+        Open <code>js/config.js</code>, assign your key to <code>CONFIG.API_KEY</code>, and save.
+        Need a key? Obtain one free at <a href="https://home.openweathermap.org/api_keys" target="_blank" rel="noopener noreferrer" class="banner-link">OpenWeatherMap API Portal</a>.
+      </div>
+    </aside>
+
+    <!-- Error Alert Container -->
+    <div class="error-container hidden" id="error-message-container" role="alert" aria-live="assertive">
+      <i class="fas fa-circle-exclamation error-icon" aria-hidden="true"></i>
+      <div class="error-text" id="error-message-text"></div>
+      <button type="button" class="error-dismiss-btn" id="error-dismiss-btn" aria-label="Dismiss error">
+        <i class="fas fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- Loading State Overlay -->
+    <div class="loading-overlay hidden" id="loading-overlay" aria-live="polite" aria-busy="true">
+      <div class="spinner" aria-hidden="true"></div>
+      <p class="loading-text">Fetching real-time atmospheric telemetry...</p>
+    </div>
+
+    <!-- Main Dashboard Body (Revealed upon data retrieval) -->
+    <main class="dashboard-content" id="dashboard-content">
+
+      <!-- Current Weather Hero Card -->
+      <section class="current-weather-hero" aria-label="Current Weather Conditions">
+        <div class="hero-main-info">
+          <div class="location-wrapper">
+            <h2 class="location-title">
+              <span id="city-name">--</span>
+              <span class="country-badge" id="country-code">--</span>
+            </h2>
+            <p class="city-time" id="city-local-time">Local Time: --:--</p>
+          </div>
+
+          <div class="temp-visual-row">
+            <div class="large-temperature">
+              <span id="current-temp">--</span><span class="temp-unit">°C</span>
+            </div>
+            <div class="condition-pill-box">
+              <span class="condition-main" id="weather-condition">--</span>
+              <span class="condition-detail" id="weather-description">--</span>
+            </div>
+          </div>
+
+          <div class="temp-extremes-row">
+            <span class="temp-item">
+              <i class="fas fa-temperature-half" aria-hidden="true"></i> Feels like: <strong id="feels-like-temp">--</strong>°C
+            </span>
+            <span class="temp-item temp-high">
+              <i class="fas fa-arrow-up" aria-hidden="true"></i> High: <strong id="today-temp-max">--</strong>°C
+            </span>
+            <span class="temp-item temp-low">
+              <i class="fas fa-arrow-down" aria-hidden="true"></i> Low: <strong id="today-temp-min">--</strong>°C
+            </span>
+          </div>
+        </div>
+
+        <div class="hero-visual-icon">
+          <img 
+            src="https://openweathermap.org/img/wn/01d@4x.png" 
+            alt="Weather condition representation" 
+            id="current-weather-icon" 
+            class="weather-icon-large"
+          />
+        </div>
+      </section>
+
+      <!-- Weather Metrics Section (6 Key Telemetry Cards) -->
+      <section class="metrics-section" aria-label="Atmospheric Metrics">
+        <h3 class="section-heading">
+          <i class="fas fa-chart-simple" aria-hidden="true"></i> Atmospheric Telemetry
+        </h3>
+        
+        <div class="metrics-grid">
+          <!-- Humidity -->
+          <article class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Humidity</span>
+              <div class="metric-icon-circle"><i class="fas fa-droplet"></i></div>
+            </div>
+            <div class="metric-value" id="metric-humidity">--%</div>
+            <div class="progress-bar-bg" aria-hidden="true">
+              <div class="progress-bar-fill" id="metric-humidity-bar" style="width: 0%;"></div>
+            </div>
+            <span class="metric-subtext">Relative moisture</span>
+          </article>
+
+          <!-- Wind Speed -->
+          <article class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Wind Speed</span>
+              <div class="metric-icon-circle"><i class="fas fa-wind"></i></div>
+            </div>
+            <div class="metric-value" id="metric-wind-speed">-- m/s</div>
+            <span class="metric-subtext" id="metric-wind-direction">Direction: --</span>
+          </article>
+
+          <!-- Atmospheric Pressure -->
+          <article class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Pressure</span>
+              <div class="metric-icon-circle"><i class="fas fa-gauge-high"></i></div>
+            </div>
+            <div class="metric-value" id="metric-pressure">-- hPa</div>
+            <span class="metric-subtext">Barometric reading</span>
+          </article>
+
+          <!-- Visibility -->
+          <article class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Visibility</span>
+              <div class="metric-icon-circle"><i class="fas fa-eye"></i></div>
+            </div>
+            <div class="metric-value" id="metric-visibility">-- km</div>
+            <span class="metric-subtext">Horizontal line of sight</span>
+          </article>
+
+          <!-- Sunrise -->
+          <article class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Sunrise</span>
+              <div class="metric-icon-circle"><i class="fas fa-sun"></i></div>
+            </div>
+            <div class="metric-value" id="metric-sunrise">--:--</div>
+            <span class="metric-subtext">Dawn local time</span>
+          </article>
+
+          <!-- Sunset -->
+          <article class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Sunset</span>
+              <div class="metric-icon-circle"><i class="fas fa-moon"></i></div>
+            </div>
+            <div class="metric-value" id="metric-sunset">--:--</div>
+            <span class="metric-subtext">Dusk local time</span>
+          </article>
+        </div>
+      </section>
+
+      <!-- 5-Day Forecast Section -->
+      <section class="forecast-section" aria-label="Five-Day Forecast">
+        <h3 class="section-heading">
+          <i class="fas fa-calendar-week" aria-hidden="true"></i> 5-Day Meteorological Forecast
+        </h3>
+        <div class="forecast-grid" id="forecast-container">
+          <!-- 5 Forecast Cards injected dynamically by forecast.js / app.js -->
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer" role="contentinfo">
+      <div class="footer-left">
+        <p><strong>AeroPulse Telemetry Dashboard</strong> — Internship Frontend Engineering Project</p>
+        <p class="footer-tagline">Architected with Pure HTML5, CSS3, ES6+ Vanilla JavaScript & OpenWeatherMap API</p>
+      </div>
+      <div class="footer-links">
+        <a href="https://openweathermap.org/api" target="_blank" rel="noopener noreferrer">
+          <i class="fas fa-cloud"></i> OpenWeatherMap API
+        </a>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- JavaScript Modules in Dependency Order -->
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/forecast.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
+
